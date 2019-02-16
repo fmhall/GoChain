@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -15,7 +16,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// Data Structure to represent each block
+// Block Data Structure to represent each block
 type Block struct {
 	Index     int
 	Timestamp string
@@ -26,6 +27,9 @@ type Block struct {
 
 // Blockchain is a slice of the Block struct
 var Blockchain []Block
+
+// Adding networking functionality - bcServer is initialized as a channel for the blockchain
+var bcServer chan []Block
 
 func getHash(block Block) string {
 	aggregate := string(block.Index) + block.Timestamp + string(block.Data)
@@ -105,8 +109,14 @@ func handleGetBlockchain(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, string(bytes))
 }
 
+// Message type to pass in data
 type Message struct {
 	Data int
+}
+
+func handleConn(conn net.Conn) {
+
+	defer conn.Close()
 }
 
 func handleWriteBlock(w http.ResponseWriter, r *http.Request) {
@@ -152,11 +162,26 @@ func main() {
 		log.Fatal(err)
 	}
 
-	go func() {
-		t := time.Now()
-		genesisBlock := Block{0, t.String(), 0, "", ""}
-		spew.Dump(genesisBlock)
-		Blockchain = append(Blockchain, genesisBlock)
-	}()
+	bcServer = make(chan []Block)
+
+	t := time.Now()
+	genesisBlock := Block{0, t.String(), 0, "", ""}
+	spew.Dump(genesisBlock)
+	Blockchain = append(Blockchain, genesisBlock)
+
+	server, err := net.Listen("tcp", ":"+os.Getenv("ADDR"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer server.Close()
+
+	for {
+		conn, err := server.Accept()
+		if err != nil {
+			log.Fatal(err)
+		}
+		go handleConn(conn)
+	}
+
 	log.Fatal(run())
 }
