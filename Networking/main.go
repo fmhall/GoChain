@@ -57,10 +57,12 @@ func main() {
 		log.Fatal(err)
 	}
 	log.Println("HTTP Server Listening on port: ", httpPort)
+
 	defer server.Close()
 
 	for {
 		conn, err := server.Accept()
+		log.Println("Connection established to server")
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -117,7 +119,8 @@ func replaceChain(newBlocks []Block) {
 func handleConn(conn net.Conn) {
 
 	defer conn.Close()
-
+	io.WriteString(conn, conn.LocalAddr().String()+"\n")
+	io.WriteString(conn, conn.RemoteAddr().String()+"\n")
 	io.WriteString(conn, "Enter new data:")
 
 	scanner := bufio.NewScanner(conn)
@@ -155,12 +158,14 @@ func handleConn(conn net.Conn) {
 				log.Fatal(err)
 			}
 			mutex.Unlock()
-			io.WriteString(conn, string(output))
+			io.WriteString(conn, "\n"+string(output)+"\n")
 		}
 	}()
-
-	for range bcServer {
-		spew.Dump(Blockchain)
+	count := 0
+	for elem := range bcServer {
+		spew.Dump(elem)
+		log.Println("count: " + string(count))
+		count = count + 1
 	}
-
+	count = 0
 }
